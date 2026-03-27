@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stakeholder Power vs Interest Matrix</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f9f8f6;
+      --surface: #ffffff;
+      --border: rgba(0,0,0,0.1);
+      --text-primary: #1a1a1a;
+      --text-secondary: #6b6b6b;
+      --text-muted: #9a9a9a;
+      --accent: #3b5bdb;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #141414;
+        --surface: #1e1e1e;
+        --border: rgba(255,255,255,0.1);
+        --text-primary: #f0f0f0;
+        --text-secondary: #a0a0a0;
+        --text-muted: #606060;
+        --shadow: 0 1px 4px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
+      }
+    }
+
+    body {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 2rem 1.5rem;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: normal;
+      letter-spacing: 0.02em;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .input-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field label {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .field input[type=text] {
+      width: 100%;
+      height: 36px;
+      padding: 0 10px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .field input[type=text]:focus {
+      border-color: var(--accent);
+    }
+
+    .slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .field input[type=range] {
+      flex: 1;
+      height: 4px;
+      cursor: pointer;
+      accent-color: var(--accent);
+    }
+
+    .val-badge {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      min-width: 18px;
+      text-align: right;
+    }
+
+    .add-btn {
+      height: 36px;
+      padding: 0 18px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    .add-btn:hover { opacity: 0.88; }
+    .add-btn:active { transform: scale(0.97); }
+
+    .error-msg {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 12px;
+      color: #c0392b;
+      margin-top: 6px;
+      display: none;
+    }
+
+    .chart-area {
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
+    }
+
+    .matrix-canvas-wrap {
+      flex: 1;
+      min-width: 0;
+    }
+
+    canvas {
+      width: 100%;
+      border-radius: var(--radius-md);
+      display: block;
+    }
+
+    .legend-panel {
+      min-width: 160px;
+      max-width: 200px;
+    }
+
+    .legend-title {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+
+    .legend-tri { width: 13px; height: 13px; flex-shrink: 0; }
+
+    .legend-scores {
+      font-size: 11px;
+      color: var(--text-muted);
+      padding-left: 21px;
+      margin-bottom: 8px;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    .remove-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 13px;
+      padding: 0 0 0 4px;
+      line-height: 1;
+      margin-left: auto;
+      transition: color 0.15s;
+    }
+    .remove-btn:hover { color: #c0392b; }
+
+    .empty-msg {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 13px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    @media (max-width: 600px) {
+      .input-row { grid-template-columns: 1fr; }
+      .chart-area { flex-direction: column; }
+      .legend-panel { min-width: 100%; max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Stakeholder Power &amp; Interest Matrix</h1>
+  <p class="subtitle">Plot stakeholders by influence and engagement</p>
+
+  <div class="card input-section">
+    <div class="input-row">
+      <div class="field">
+        <label>Stakeholder name</label>
+        <input type="text" id="sName" placeholder="e.g. Board of Directors" />
+      </div>
+      <div class="field">
+        <label>Interest &nbsp;<span class="val-badge" id="intVal">5</span></label>
+        <div class="slider-wrap">
+          <input type="range" min="1" max="10" value="5" step="1" id="sInterest"
+            oninput="document.getElementById('intVal').textContent=this.value" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Power &nbsp;<span class="val-badge" id="pwrVal">5</span></label>
+        <div class="slider-wrap">
+          <input type="range" min="1" max="10" value="5" step="1" id="sPower"
+            oninput="document.getElementById('pwrVal').textContent=this.value" />
+        </div>
+      </div>
+      <button class="add-btn" onclick="addStakeholder()">Add ↗</button>
+    </div>
+    <div class="error-msg" id="errMsg">Please enter a stakeholder name.</div>
+  </div>
+
+  <div class="card" style="margin-top: 1rem;">
+    <div class="chart-area">
+      <div class="matrix-canvas-wrap">
+        <canvas id="matrixCanvas" width="520" height="440"></canvas>
+      </div>
+      <div class="legend-panel">
+        <div class="legend-title">Stakeholders</div>
+        <div id="legendItems"><div class="empty-msg">None added yet.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const COLORS = [
+      '#3b5bdb','#e76f51','#2dc7aa','#f4a261','#9b59b6',
+      '#e63946','#43aa8b','#e8b04a','#0077b6','#ef476f'
+    ];
+    const stakeholders = [];
+    const PAD = { l: 54, r: 20, t: 24, b: 54 };
+
+    function isDark() {
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function drawMatrix() {
+      const canvas = document.getElementById('matrixCanvas');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      const dark = isDark();
+      const textCol = dark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.45)';
+      const axisCol = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.25)';
+      const midX = PAD.l + (W - PAD.l - PAD.r) / 2;
+      const midY = PAD.t + (H - PAD.t - PAD.b) / 2;
+
+      ctx.clearRect(0, 0, W, H);
+
+      const quads = [
+        { x: PAD.l, y: PAD.t, w: midX - PAD.l, h: midY - PAD.t, fill: dark ? 'rgba(59,91,219,0.08)' : 'rgba(59,91,219,0.05)', label: 'Keep satisfied' },
+        { x: midX, y: PAD.t, w: W - midX - PAD.r, h: midY - PAD.t, fill: dark ? 'rgba(45,199,170,0.09)' : 'rgba(45,199,170,0.07)', label: 'Manage closely' },
+        { x: PAD.l, y: midY, w: midX - PAD.l, h: H - midY - PAD.b, fill: dark ? 'rgba(0,0,0,0)' : 'rgba(0,0,0,0.015)', label: 'Monitor' },
+        { x: midX, y: midY, w: W - midX - PAD.r, h: H - midY - PAD.b, fill: dark ? 'rgba(244,162,97,0.08)' : 'rgba(244,162,97,0.06)', label: 'Keep informed' }
+      ];
+
+      quads.forEach(q => {
+        ctx.fillStyle = q.fill;
+        ctx.fillRect(q.x, q.y, q.w, q.h);
+      });
+
+      ctx.strokeStyle = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(PAD.l, PAD.t, W - PAD.l - PAD.r, H - PAD.t - PAD.b);
+      ctx.beginPath();
+      ctx.moveTo(midX, PAD.t); ctx.lineTo(midX, H - PAD.b);
+      ctx.moveTo(PAD.l, midY); ctx.lineTo(W - PAD.r, midY);
+      ctx.stroke();
+
+      ctx.font = '10px Helvetica Neue, Arial, sans-serif';
+      ctx.fillStyle = textCol;
+      ctx.textAlign = 'center';
+      quads.forEach(q => {
+        ctx.fillText(q.label, q.x + q.w / 2, q.y + q.h - 10);
+      });
+
+      ctx.fillStyle = axisCol;
+      ctx.font = '11px Helvetica Neue, Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Interest →', PAD.l + (W - PAD.l - PAD.r) / 2, H - 10);
+      ctx.save();
+      ctx.translate(14, PAD.t + (H - PAD.t - PAD.b) / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('Power →', 0, 0);
+      ctx.restore();
+
+      for (let i = 1; i <= 10; i++) {
+        const x = PAD.l + ((i - 0.5) / 10) * (W - PAD.l - PAD.r);
+        ctx.fillStyle = textCol;
+        ctx.font = '9px Helvetica Neue, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(i, x, H - PAD.b + 14);
+        const y = H - PAD.b - ((i - 0.5) / 10) * (H - PAD.t - PAD.b);
+        ctx.textAlign = 'right';
+        ctx.fillText(i, PAD.l - 6, y + 3);
+      }
+
+      stakeholders.forEach(s => {
+        const x = PAD.l + ((s.interest - 0.5) / 10) * (W - PAD.l - PAD.r);
+        const y = H - PAD.b - ((s.power - 0.5) / 10) * (H - PAD.t - PAD.b);
+        const r = 13;
+        ctx.beginPath();
+        ctx.moveTo(x, y - r);
+        ctx.lineTo(x + r * 0.866, y + r * 0.5);
+        ctx.lineTo(x - r * 0.866, y + r * 0.5);
+        ctx.closePath();
+        ctx.fillStyle = s.color;
+        ctx.fill();
+        ctx.strokeStyle = dark ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.9)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        const label = s.name.length > 13 ? s.name.slice(0, 12) + '…' : s.name;
+        ctx.fillStyle = dark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)';
+        ctx.font = '10px Helvetica Neue, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x, y + r + 12);
+      });
+    }
+
+    function renderLegend() {
+      const el = document.getElementById('legendItems');
+      if (stakeholders.length === 0) {
+        el.innerHTML = '<div class="empty-msg">None added yet.</div>';
+        return;
+      }
+      el.innerHTML = stakeholders.map((s, i) => `
+        <div class="legend-item">
+          <svg class="legend-tri" viewBox="0 0 13 13">
+            <polygon points="6.5,0.5 12.5,12.5 0.5,12.5" fill="${s.color}" />
+          </svg>
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${s.name}">${s.name}</span>
+          <button class="remove-btn" onclick="removeStakeholder(${i})">✕</button>
+        </div>
+        <div class="legend-scores">Interest ${s.interest} &nbsp;·&nbsp; Power ${s.power}</div>
+      `).join('');
+    }
+
+    function addStakeholder() {
+      const name = document.getElementById('sName').value.trim();
+      const err = document.getElementById('errMsg');
+      if (!name) { err.style.display = 'block'; return; }
+      err.style.display = 'none';
+      const interest = parseInt(document.getElementById('sInterest').value);
+      const power = parseInt(document.getElementById('sPower').value);
+      const color = COLORS[stakeholders.length % COLORS.length];
+      stakeholders.push({ name, interest, power, color });
+      document.getElementById('sName').value = '';
+      drawMatrix();
+      renderLegend();
+    }
+
+    document.getElementById('sName').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addStakeholder();
+    });
+
+    function removeStakeholder(i) {
+      stakeholders.splice(i, 1);
+      drawMatrix();
+      renderLegend();
+    }
+
+    drawMatrix();
+    renderLegend();
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawMatrix);
+  </script>
+</body>
+</html>
