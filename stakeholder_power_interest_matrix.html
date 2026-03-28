@@ -1,21 +1,66 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stakeholder Power Interest Matrix</title>
-    <script src="https://example.com/path/to/your/export.png.js"></script>
-    <script src="https://example.com/path/to/your/load.json.js"></script>
     <style>
-        /* Add styles for the improved toolbar and canvas */
+        /* Add styles for the toolbar and canvas */
+        body { font-family: Arial, sans-serif; }
+        .toolbar { margin-bottom: 10px; }
+        canvas { border: 1px solid #ccc; }
     </style>
 </head>
 <body>
-    <div id="toolbar">
-        <button id="exportPng">Export PNG</button>
-        <button id="saveJson">Save Data</button>
-        <button id="loadJson">Load Data</button>
+    <div class="toolbar">
+        <button id="export-png">Export PNG</button>
+        <button id="save-json">Save JSON</button>
+        <button id="load-json">Load JSON</button>
     </div>
     <canvas id="matrixCanvas" width="800" height="600"></canvas>
+
     <script>
-        // Add JS for improved interactivity and resizing the canvas
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
+        // Dynamic canvas sizing logic
+        function resizeCanvas() {
+            canvas.width = window.innerWidth * 0.8;
+            canvas.height = window.innerHeight * 0.8;
+            draw();
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Function to draw the matrix
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Add drawing logic here
+        }
+
+        // Export to PNG function
+        document.getElementById('export-png').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'stakeholder_matrix.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+
+        // Save JSON function
+        document.getElementById('save-json').addEventListener('click', () => {
+            const json = {/* Your JSON data here */};
+            const blob = new Blob([JSON.stringify(json)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.download = 'stakeholder_matrix.json';
+            link.href = URL.createObjectURL(blob);
+            link.click();
+        });
+
+        // Load JSON function
+        document.getElementById('load-json').addEventListener('click', () => {
+            // Implement load logic here
+        });
+
+        // Add interactive features here
     </script>
 </body>
 </html>
