@@ -1,66 +1,485 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stakeholder Power Interest Matrix</title>
-    <style>
-        /* Add styles for the toolbar and canvas */
-        body { font-family: Arial, sans-serif; }
-        .toolbar { margin-bottom: 10px; }
-        canvas { border: 1px solid #ccc; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stakeholder Power &amp; Interest Matrix</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f9f8f6;
+      --surface: #ffffff;
+      --border: rgba(0,0,0,0.1);
+      --text-primary: #1a1a1a;
+      --text-secondary: #6b6b6b;
+      --text-muted: #9a9a9a;
+      --accent: #3b5bdb;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #141414;
+        --surface: #1e1e1e;
+        --border: rgba(255,255,255,0.1);
+        --text-primary: #f0f0f0;
+        --text-secondary: #a0a0a0;
+        --text-muted: #606060;
+        --shadow: 0 1px 4px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
+      }
+    }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: var(--text-primary); min-height: 100vh; padding: 2rem 1.5rem; }
+    h1 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: var(--text-secondary); margin-bottom: 1.5rem; letter-spacing: 0.05em; text-transform: uppercase; }
+    .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; box-shadow: var(--shadow); margin-bottom: 1rem; }
+    .input-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .input-bottom { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; }
+    .field label { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); display: block; margin-bottom: 6px; }
+    .field input[type=text] { width: 100%; height: 36px; padding: 0 10px; border: 0.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg); color: var(--text-primary); font-family: inherit; font-size: 13px; outline: none; transition: border-color 0.15s; }
+    .field input[type=text]:focus { border-color: var(--accent); }
+    .field input[type=range] { width: 100%; accent-color: var(--accent); margin-top: 4px; }
+    .val-badge { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .shape-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+    .shape-opt { width: 40px; height: 40px; border-radius: 6px; border: 1.5px solid #d0d0d0; background: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: border-color 0.12s; padding: 0; flex-shrink: 0; }
+    .shape-opt:hover { border-color: #999; }
+    .shape-opt.selected { border: 2.5px solid #3b5bdb; }
+    .add-btn { height: 36px; padding: 0 18px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-md); font-family: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; transition: opacity 0.15s; }
+    .add-btn:hover { opacity: 0.88; }
+    .error-msg { font-size: 12px; color: #c0392b; margin-top: 6px; display: none; }
+    .chart-area { display: flex; gap: 1.5rem; align-items: flex-start; }
+    .canvas-col { flex: 1; min-width: 0; }
+    .toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .zoom-btn { width: 28px; height: 28px; border-radius: 6px; border: 0.5px solid var(--border); background: var(--surface); color: var(--text-primary); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .zoom-btn:hover { background: var(--bg); }
+    .zoom-label { font-size: 12px; color: var(--text-secondary); min-width: 40px; text-align: center; }
+    .tool-btn { font-size: 11px; color: var(--text-secondary); background: none; border: 0.5px solid var(--border); border-radius: 5px; padding: 4px 10px; cursor: pointer; white-space: nowrap; font-family: inherit; transition: background 0.12s; }
+    .tool-btn:hover { background: var(--bg); }
+    .tool-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .tool-btn.primary:hover { opacity: 0.88; }
+    .toolbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 2px; }
+    .hint { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+    canvas { width: 100%; display: block; border-radius: var(--radius-md); cursor: default; }
+    canvas.panning { cursor: grabbing; }
+    canvas.hovershape { cursor: grab; }
+    .legend-panel { min-width: 175px; max-width: 210px; }
+    .legend-title { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 10px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; font-size: 13px; color: var(--text-primary); }
+    .legend-scores { font-size: 11px; color: var(--text-muted); padding-left: 24px; margin-bottom: 8px; }
+    .legend-shape { width: 16px; height: 16px; flex-shrink: 0; }
+    .remove-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 12px; padding: 0 0 0 4px; margin-left: auto; }
+    .remove-btn:hover { color: #c0392b; }
+    .empty-msg { font-size: 13px; color: var(--text-muted); font-style: italic; }
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: #fff; font-size: 13px; padding: 8px 18px; border-radius: 20px; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 999; }
+    .toast.show { opacity: 1; }
+    @media (max-width: 600px) {
+      .input-grid { grid-template-columns: 1fr; }
+      .input-bottom { grid-template-columns: 1fr; }
+      .chart-area { flex-direction: column; }
+      .legend-panel { min-width: 100%; max-width: 100%; }
+      .hint { display: none; }
+    }
+  </style>
 </head>
 <body>
-    <div class="toolbar">
-        <button id="export-png">Export PNG</button>
-        <button id="save-json">Save JSON</button>
-        <button id="load-json">Load JSON</button>
+  <h1>Stakeholder Power &amp; Interest Matrix</h1>
+  <p class="subtitle">Plot stakeholders by influence and engagement</p>
+
+  <div class="card">
+    <div class="input-grid">
+      <div class="field">
+        <label>Stakeholder name</label>
+        <input type="text" id="sName" placeholder="e.g. Board of Directors" />
+      </div>
+      <div class="field">
+        <label>Interest &nbsp;<span class="val-badge" id="intVal">5</span></label>
+        <input type="range" min="1" max="10" value="5" step="0.5" id="sInterest"
+          oninput="document.getElementById('intVal').textContent=fmtVal(this.value)" />
+      </div>
+      <div class="field">
+        <label>Power &nbsp;<span class="val-badge" id="pwrVal">5</span></label>
+        <input type="range" min="1" max="10" value="5" step="0.5" id="sPower"
+          oninput="document.getElementById('pwrVal').textContent=fmtVal(this.value)" />
+      </div>
     </div>
-    <canvas id="matrixCanvas" width="800" height="600"></canvas>
+    <div class="input-bottom">
+      <div class="field">
+        <label>Shape</label>
+        <div class="shape-picker" id="shapePicker"></div>
+      </div>
+      <button class="add-btn" onclick="addStakeholder()">Add ↗</button>
+    </div>
+    <div class="error-msg" id="errMsg">Please enter a stakeholder name.</div>
+  </div>
 
-    <script>
-        const canvas = document.getElementById('matrixCanvas');
-        const ctx = canvas.getContext('2d');
-        // Dynamic canvas sizing logic
-        function resizeCanvas() {
-            canvas.width = window.innerWidth * 0.8;
-            canvas.height = window.innerHeight * 0.8;
-            draw();
+  <div class="card">
+    <div class="chart-area">
+      <div class="canvas-col" id="canvasWrap">
+        <div class="toolbar">
+          <button class="zoom-btn" onclick="changeZoom(-0.2)">−</button>
+          <span class="zoom-label" id="zoomLabel">100%</span>
+          <button class="zoom-btn" onclick="changeZoom(0.2)">+</button>
+          <button class="tool-btn" onclick="resetView()">Reset view</button>
+          <div class="toolbar-sep"></div>
+          <button class="tool-btn primary" onclick="exportPNG()">⬇ Export PNG</button>
+          <button class="tool-btn" onclick="saveJSON()">⬇ Save data</button>
+          <button class="tool-btn" onclick="document.getElementById('loadInput').click()">⬆ Load data</button>
+          <input type="file" id="loadInput" accept=".json" style="display:none" onchange="loadJSON(event)" />
+          <span class="hint">Scroll to zoom · Drag canvas to pan · Drag shape to reposition</span>
+        </div>
+        <canvas id="matrixCanvas"></canvas>
+      </div>
+      <div class="legend-panel">
+        <div class="legend-title">Stakeholders</div>
+        <div id="legendItems"><div class="empty-msg">None added yet.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const COLORS = ['#3b5bdb','#e76f51','#2dc7aa','#f4a261','#9b59b6','#e63946','#43aa8b','#e8b04a','#0077b6','#ef476f'];
+    const SHAPES = ['circle','triangle','square','diamond','star','hexagon'];
+    const BASE_PAD = {l:70,r:28,t:32,b:70};
+    const stakeholders = [];
+    let zoom=1, panX=0, panY=0, cssW=600, cssH=492;
+    let selectedShape='circle';
+    let interactionMode='none', dragIdx=-1, dragState=null, lastMouse={x:0,y:0};
+
+    function isDark(){ return window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches; }
+    function fmtVal(v){ return parseFloat(v)%1===0?String(parseInt(v)):parseFloat(v).toFixed(1); }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(()=>t.classList.remove('show'), 2200);
+    }
+
+    function shapeToSVG(id, size, fillColor) {
+      const c = size/2, r = (size/2)*0.8, f = fillColor;
+      let body = '';
+      if (id==='circle') body=`<circle cx="${c}" cy="${c}" r="${r}" fill="${f}"/>`;
+      else if (id==='triangle') body=`<polygon points="${c},${c-r} ${c+r*0.866},${c+r*0.5} ${c-r*0.866},${c+r*0.5}" fill="${f}"/>`;
+      else if (id==='square') body=`<rect x="${c-r}" y="${c-r}" width="${r*2}" height="${r*2}" fill="${f}"/>`;
+      else if (id==='diamond') body=`<polygon points="${c},${c-r} ${c+r*0.75},${c} ${c},${c+r} ${c-r*0.75},${c}" fill="${f}"/>`;
+      else if (id==='star') { let pts=''; for(let i=0;i<10;i++){const a=(Math.PI/5)*i-Math.PI/2,rr=i%2===0?r:r*0.42;pts+=`${c+rr*Math.cos(a)},${c+rr*Math.sin(a)} `;} body=`<polygon points="${pts.trim()}" fill="${f}"/>`; }
+      else if (id==='hexagon') { let pts=''; for(let i=0;i<6;i++){const a=(Math.PI/3)*i-Math.PI/6;pts+=`${c+r*Math.cos(a)},${c+r*Math.sin(a)} `;} body=`<polygon points="${pts.trim()}" fill="${f}"/>`; }
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${body}</svg>`;
+    }
+
+    function buildShapePicker() {
+      document.getElementById('shapePicker').innerHTML = SHAPES.map(id => {
+        const isSel = id===selectedShape;
+        return `<button class="shape-opt${isSel?' selected':''}" id="shapeBtn-${id}" onclick="selectShape('${id}')" title="${id}">${shapeToSVG(id,32,isSel?'#3b5bdb':'#888888')}</button>`;
+      }).join('');
+    }
+
+    function selectShape(id) {
+      selectedShape = id;
+      SHAPES.forEach(sid => {
+        const btn = document.getElementById('shapeBtn-'+sid);
+        if (!btn) return;
+        const isSel = sid===id;
+        btn.classList.toggle('selected', isSel);
+        btn.innerHTML = shapeToSVG(sid, 32, isSel?'#3b5bdb':'#888888');
+      });
+    }
+
+    function setupCanvas() {
+      const canvas = document.getElementById('matrixCanvas');
+      const dpr = window.devicePixelRatio||2;
+      const wrap = document.getElementById('canvasWrap');
+      cssW = wrap.clientWidth||600;
+      // Fit height to available viewport so the matrix never clips at the bottom
+      const maxH = Math.max(300, window.innerHeight - wrap.getBoundingClientRect().top - 40);
+      const naturalH = Math.round(cssW * 0.82);
+      cssH = Math.min(naturalH, maxH);
+      canvas.style.width=cssW+'px'; canvas.style.height=cssH+'px';
+      canvas.width=Math.round(cssW*dpr); canvas.height=Math.round(cssH*dpr);
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr,dpr);
+      return ctx;
+    }
+
+    function canvasCoords(ex,ey){
+      const canvas=document.getElementById('matrixCanvas');
+      const rect=canvas.getBoundingClientRect();
+      return {cx:(ex-rect.left)*(cssW/rect.width),cy:(ey-rect.top)*(cssH/rect.height)};
+    }
+    function screenToWorld(cx,cy){ return {wx:(cx-panX)/zoom,wy:(cy-panY)/zoom}; }
+    function worldToValue(wx,wy){
+      const {l,r,t,b}=BASE_PAD,W=cssW,H=cssH;
+      return {
+        interest:Math.round(Math.min(10,Math.max(1,(wx-l)/(W-l-r)*10+0.5))*2)/2,
+        power:Math.round(Math.min(10,Math.max(1,(H-b-wy)/(H-t-b)*10+0.5))*2)/2
+      };
+    }
+    function shapeWorldPos(s){
+      const {l,r,t,b}=BASE_PAD,W=cssW,H=cssH;
+      return {x:l+((s.interest-0.5)/10)*(W-l-r), y:H-b-((s.power-0.5)/10)*(H-t-b)};
+    }
+    function hitTest(wx,wy){
+      const hit=Math.max(10,Math.round(cssW*0.024))/zoom*1.8;
+      for(let i=stakeholders.length-1;i>=0;i--){
+        const {x,y}=shapeWorldPos(stakeholders[i]);
+        if(Math.abs(wx-x)<hit&&Math.abs(wy-y)<hit) return i;
+      }
+      return -1;
+    }
+
+    function drawShapeCanvas(ctx,id,x,y,r,color,dark){
+      ctx.fillStyle=color;
+      ctx.strokeStyle=dark?'rgba(255,255,255,0.45)':'rgba(255,255,255,0.95)';
+      ctx.lineWidth=2/zoom;
+      ctx.beginPath();
+      if(id==='circle'){ctx.arc(x,y,r*1.15,0,Math.PI*2);ctx.fill();ctx.stroke();}
+      else if(id==='triangle'){ctx.moveTo(x,y-r);ctx.lineTo(x+r*.866,y+r*.5);ctx.lineTo(x-r*.866,y+r*.5);ctx.closePath();ctx.fill();ctx.stroke();}
+      else if(id==='square'){const s=r*1.2;ctx.rect(x-s,y-s,s*2,s*2);ctx.fill();ctx.stroke();}
+      else if(id==='diamond'){ctx.moveTo(x,y-r*1.35);ctx.lineTo(x+r*.9,y);ctx.lineTo(x,y+r*1.35);ctx.lineTo(x-r*.9,y);ctx.closePath();ctx.fill();ctx.stroke();}
+      else if(id==='star'){for(let i=0;i<10;i++){const a=(Math.PI/5)*i-Math.PI/2,rr=i%2===0?r:r*.42;i===0?ctx.moveTo(x+rr*Math.cos(a),y+rr*Math.sin(a)):ctx.lineTo(x+rr*Math.cos(a),y+rr*Math.sin(a));}ctx.closePath();ctx.fill();ctx.stroke();}
+      else if(id==='hexagon'){for(let i=0;i<6;i++){const a=(Math.PI/3)*i-Math.PI/6;i===0?ctx.moveTo(x+r*Math.cos(a),y+r*Math.sin(a)):ctx.lineTo(x+r*Math.cos(a),y+r*Math.sin(a));}ctx.closePath();ctx.fill();ctx.stroke();}
+    }
+
+    function drawMatrixFull(ctx, W, H, dark, zoomOverride, panXOverride, panYOverride) {
+      const z = zoomOverride !== undefined ? zoomOverride : zoom;
+      const px = panXOverride !== undefined ? panXOverride : panX;
+      const py = panYOverride !== undefined ? panYOverride : panY;
+      const textCol=dark?'rgba(255,255,255,0.6)':'rgba(0,0,0,0.45)';
+      const axisCol=dark?'rgba(255,255,255,0.35)':'rgba(0,0,0,0.4)';
+      ctx.clearRect(0,0,W,H);
+      ctx.save();
+      ctx.translate(px,py); ctx.scale(z,z);
+      const {l,r,t,b}=BASE_PAD;
+      const midX=l+(W-l-r)/2, midY=t+(H-t-b)/2;
+      const quads=[
+        {x:l,y:t,w:midX-l,h:midY-t,fill:dark?'rgba(59,91,219,0.08)':'rgba(59,91,219,0.05)',label:'Keep satisfied'},
+        {x:midX,y:t,w:W-midX-r,h:midY-t,fill:dark?'rgba(45,199,170,0.09)':'rgba(45,199,170,0.07)',label:'Manage closely'},
+        {x:l,y:midY,w:midX-l,h:H-midY-b,fill:dark?'rgba(0,0,0,0)':'rgba(0,0,0,0.015)',label:'Monitor'},
+        {x:midX,y:midY,w:W-midX-r,h:H-midY-b,fill:dark?'rgba(244,162,97,0.08)':'rgba(244,162,97,0.06)',label:'Keep informed'}
+      ];
+      quads.forEach(q=>{ctx.fillStyle=q.fill;ctx.fillRect(q.x,q.y,q.w,q.h);});
+      ctx.strokeStyle=dark?'rgba(255,255,255,0.15)':'rgba(0,0,0,0.15)'; ctx.lineWidth=1/z;
+      ctx.strokeRect(l,t,W-l-r,H-t-b);
+      ctx.beginPath();ctx.setLineDash([6/z,4/z]);
+      ctx.moveTo(midX,t);ctx.lineTo(midX,H-b);ctx.moveTo(l,midY);ctx.lineTo(W-r,midY);
+      ctx.stroke();ctx.setLineDash([]);
+      const fs=Math.max(9,13/z);
+      ctx.font=`600 ${fs}px Helvetica Neue,Arial,sans-serif`;
+      ctx.fillStyle=textCol;
+      quads.forEach(q=>{ctx.textAlign='center';ctx.fillText(q.label,q.x+q.w/2,q.y+q.h-14/z);});
+      ctx.fillStyle=axisCol;ctx.textAlign='center';
+      ctx.fillText('Interest  →',l+(W-l-r)/2,H-12/z);
+      ctx.save();ctx.translate(16/z,t+(H-t-b)/2);ctx.rotate(-Math.PI/2);ctx.fillText('Power  →',0,0);ctx.restore();
+      ctx.font=`${Math.max(8,11/z)}px Helvetica Neue,Arial,sans-serif`;
+      for(let i=1;i<=10;i++){
+        const x=l+((i-.5)/10)*(W-l-r);
+        ctx.fillStyle=textCol;ctx.textAlign='center';ctx.fillText(i,x,H-b+18/z);
+        const y=H-b-((i-.5)/10)*(H-t-b);
+        ctx.textAlign='right';ctx.fillText(i,l-10/z,y+4);
+      }
+      const shapeR=Math.max(10,Math.round(cssW*0.024))/z;
+      stakeholders.forEach((s,i)=>{
+        const {x,y}=shapeWorldPos(s);
+        const savedZoom=zoom; zoom=z;
+        if(i===dragIdx){ctx.save();ctx.globalAlpha=0.3;drawShapeCanvas(ctx,s.shape,x,y,shapeR,s.color,dark);ctx.restore();}
+        else{drawShapeCanvas(ctx,s.shape,x,y,shapeR,s.color,dark);}
+        zoom=savedZoom;
+        const label=s.name.length>14?s.name.slice(0,13)+'…':s.name;
+        ctx.fillStyle=dark?'rgba(255,255,255,0.75)':'rgba(0,0,0,0.55)';
+        ctx.font=`${Math.max(9,12/z)}px Helvetica Neue,Arial,sans-serif`;
+        ctx.textAlign='center';
+        ctx.fillText(label,x,y+shapeR+16/z);
+      });
+      if(dragIdx>=0&&dragState){
+        const s=stakeholders[dragIdx];
+        const savedZoom=zoom; zoom=z;
+        drawShapeCanvas(ctx,s.shape,dragState.wx,dragState.wy,shapeR,s.color,dark);
+        zoom=savedZoom;
+        const vals=worldToValue(dragState.wx,dragState.wy);
+        ctx.fillStyle=dark?'rgba(255,255,255,0.9)':'rgba(0,0,0,0.7)';
+        ctx.font=`600 ${Math.max(10,13/z)}px Helvetica Neue,Arial,sans-serif`;
+        ctx.textAlign='center';
+        ctx.fillText(`Int ${fmtVal(vals.interest)}  ·  Pwr ${fmtVal(vals.power)}`,dragState.wx,dragState.wy-shapeR-8/z);
+      }
+      ctx.restore();
+    }
+
+    function drawMatrix(){
+      const ctx=setupCanvas();
+      drawMatrixFull(ctx,cssW,cssH,isDark());
+    }
+
+    function changeZoom(delta){
+      const nz=Math.min(5,Math.max(0.3,zoom+delta));
+      const cx=cssW/2,cy=cssH/2;
+      panX=cx-(nz/zoom)*(cx-panX);panY=cy-(nz/zoom)*(cy-panY);zoom=nz;
+      document.getElementById('zoomLabel').textContent=Math.round(zoom*100)+'%';
+      drawMatrix();
+    }
+    function resetView(){
+      // Compute zoom so the full matrix fits inside the canvas in both dimensions
+      const {l,r,t,b}=BASE_PAD;
+      const matrixW = cssW - l - r;
+      const matrixH = cssH - t - b;
+      const fitZoom = Math.min(cssW / (matrixW + l + r), cssH / (matrixH + t + b));
+      zoom = Math.min(1, fitZoom);
+      // Centre the matrix
+      panX = (cssW - cssW * zoom) / 2;
+      panY = (cssH - cssH * zoom) / 2;
+      document.getElementById('zoomLabel').textContent=Math.round(zoom*100)+'%';
+      drawMatrix();
+    }
+
+    function exportPNG(){
+      const dark=isDark();
+      const scale=3;
+      const W=cssW*scale, H=cssH*scale;
+      const offscreen=document.createElement('canvas');
+      offscreen.width=W; offscreen.height=H;
+      const ctx=offscreen.getContext('2d');
+      ctx.fillStyle=dark?'#141414':'#ffffff';
+      ctx.fillRect(0,0,W,H);
+      ctx.scale(scale,scale);
+      const savedZoom=zoom, savedPanX=panX, savedPanY=panY;
+      drawMatrixFull(ctx,cssW,cssH,dark,1,0,0);
+      zoom=savedZoom;panX=savedPanX;panY=savedPanY;
+      const link=document.createElement('a');
+      link.download='stakeholder-matrix.png';
+      link.href=offscreen.toDataURL('image/png');
+      link.click();
+      showToast('PNG exported!');
+    }
+
+    function saveJSON(){
+      const data={version:1,stakeholders:stakeholders.map(s=>({...s}))};
+      const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+      const link=document.createElement('a');
+      link.download='stakeholder-matrix.json';
+      link.href=URL.createObjectURL(blob);
+      link.click();
+      showToast('Data saved!');
+    }
+
+    function loadJSON(event){
+      const file=event.target.files[0];
+      if(!file) return;
+      const reader=new FileReader();
+      reader.onload=e=>{
+        try {
+          const data=JSON.parse(e.target.result);
+          if(!data.stakeholders||!Array.isArray(data.stakeholders)) throw new Error('Invalid file');
+          stakeholders.length=0;
+          data.stakeholders.forEach(s=>stakeholders.push(s));
+          drawMatrix();renderLegend();
+          showToast(`Loaded ${stakeholders.length} stakeholder${stakeholders.length!==1?'s':''}!`);
+        } catch(err){
+          showToast('Could not read file — please use a saved matrix JSON.');
         }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+      };
+      reader.readAsText(file);
+      event.target.value='';
+    }
 
-        // Function to draw the matrix
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // Add drawing logic here
-        }
+    function renderLegend(){
+      const el=document.getElementById('legendItems');
+      if(!stakeholders.length){el.innerHTML='<div class="empty-msg">None added yet.</div>';return;}
+      el.innerHTML=stakeholders.map((s,i)=>`
+        <div class="legend-item">
+          <span class="legend-shape">${shapeToSVG(s.shape,16,s.color)}</span>
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${s.name}">${s.name}</span>
+          <button class="remove-btn" onclick="removeStakeholder(${i})">✕</button>
+        </div>
+        <div class="legend-scores">Int ${fmtVal(s.interest)} · Pwr ${fmtVal(s.power)} · ${s.shape}</div>
+      `).join('');
+    }
 
-        // Export to PNG function
-        document.getElementById('export-png').addEventListener('click', () => {
-            const link = document.createElement('a');
-            link.download = 'stakeholder_matrix.png';
-            link.href = canvas.toDataURL();
-            link.click();
-        });
+    function addStakeholder(){
+      const name=document.getElementById('sName').value.trim();
+      const err=document.getElementById('errMsg');
+      if(!name){err.style.display='block';return;}
+      err.style.display='none';
+      const idx=stakeholders.length;
+      stakeholders.push({name,interest:parseFloat(document.getElementById('sInterest').value),power:parseFloat(document.getElementById('sPower').value),color:COLORS[idx%COLORS.length],shape:selectedShape});
+      document.getElementById('sName').value='';
+      drawMatrix();renderLegend();
+    }
+    function removeStakeholder(i){stakeholders.splice(i,1);drawMatrix();renderLegend();}
 
-        // Save JSON function
-        document.getElementById('save-json').addEventListener('click', () => {
-            const json = {/* Your JSON data here */};
-            const blob = new Blob([JSON.stringify(json)], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.download = 'stakeholder_matrix.json';
-            link.href = URL.createObjectURL(blob);
-            link.click();
-        });
+    document.getElementById('sName').addEventListener('keydown',e=>{if(e.key==='Enter')addStakeholder();});
 
-        // Load JSON function
-        document.getElementById('load-json').addEventListener('click', () => {
-            // Implement load logic here
-        });
+    const canvas=document.getElementById('matrixCanvas');
 
-        // Add interactive features here
-    </script>
+    canvas.addEventListener('wheel',e=>{
+      e.preventDefault();
+      const {cx,cy}=canvasCoords(e.clientX,e.clientY);
+      const delta=e.deltaY<0?0.15:-0.15;
+      const nz=Math.min(5,Math.max(0.3,zoom+delta));
+      panX=cx-(nz/zoom)*(cx-panX);panY=cy-(nz/zoom)*(cy-panY);zoom=nz;
+      document.getElementById('zoomLabel').textContent=Math.round(zoom*100)+'%';
+      drawMatrix();
+    },{passive:false});
+
+    canvas.addEventListener('mousedown',e=>{
+      const {cx,cy}=canvasCoords(e.clientX,e.clientY);
+      const {wx,wy}=screenToWorld(cx,cy);
+      const hit=hitTest(wx,wy);
+      if(hit>=0){interactionMode='drag-shape';dragIdx=hit;dragState={wx,wy};canvas.classList.add('panning');}
+      else{interactionMode='pan';lastMouse={x:e.clientX,y:e.clientY};canvas.classList.add('panning');}
+    });
+    window.addEventListener('mousemove',e=>{
+      if(interactionMode==='drag-shape'&&dragIdx>=0){
+        const {cx,cy}=canvasCoords(e.clientX,e.clientY);
+        const {wx,wy}=screenToWorld(cx,cy);dragState={wx,wy};drawMatrix();
+      } else if(interactionMode==='pan'){
+        const rect=canvas.getBoundingClientRect(),scale=cssW/rect.width;
+        panX+=(e.clientX-lastMouse.x)*scale;panY+=(e.clientY-lastMouse.y)*scale;
+        lastMouse={x:e.clientX,y:e.clientY};drawMatrix();
+      } else {
+        const {cx,cy}=canvasCoords(e.clientX,e.clientY);
+        const {wx,wy}=screenToWorld(cx,cy);
+        canvas.classList.toggle('hovershape',hitTest(wx,wy)>=0);
+      }
+    });
+    window.addEventListener('mouseup',()=>{
+      if(interactionMode==='drag-shape'&&dragIdx>=0&&dragState){
+        const vals=worldToValue(dragState.wx,dragState.wy);
+        stakeholders[dragIdx].interest=vals.interest;stakeholders[dragIdx].power=vals.power;renderLegend();
+      }
+      interactionMode='none';dragIdx=-1;dragState=null;canvas.classList.remove('panning','hovershape');drawMatrix();
+    });
+    canvas.addEventListener('touchstart',e=>{
+      if(e.touches.length!==1)return;
+      const {cx,cy}=canvasCoords(e.touches[0].clientX,e.touches[0].clientY);
+      const {wx,wy}=screenToWorld(cx,cy);const hit=hitTest(wx,wy);
+      if(hit>=0){interactionMode='drag-shape';dragIdx=hit;dragState={wx,wy};}
+      else{interactionMode='pan';lastMouse={x:e.touches[0].clientX,y:e.touches[0].clientY};}
+    },{passive:true});
+    canvas.addEventListener('touchmove',e=>{
+      if(e.touches.length!==1)return;
+      if(interactionMode==='drag-shape'&&dragIdx>=0){
+        const {cx,cy}=canvasCoords(e.touches[0].clientX,e.touches[0].clientY);
+        const {wx,wy}=screenToWorld(cx,cy);dragState={wx,wy};drawMatrix();
+      } else if(interactionMode==='pan'){
+        const rect=canvas.getBoundingClientRect(),scale=cssW/rect.width;
+        panX+=(e.touches[0].clientX-lastMouse.x)*scale;panY+=(e.touches[0].clientY-lastMouse.y)*scale;
+        lastMouse={x:e.touches[0].clientX,y:e.touches[0].clientY};drawMatrix();
+      }
+    },{passive:true});
+    canvas.addEventListener('touchend',()=>{
+      if(interactionMode==='drag-shape'&&dragIdx>=0&&dragState){
+        const vals=worldToValue(dragState.wx,dragState.wy);
+        stakeholders[dragIdx].interest=vals.interest;stakeholders[dragIdx].power=vals.power;renderLegend();
+      }
+      interactionMode='none';dragIdx=-1;dragState=null;drawMatrix();
+    });
+
+    new ResizeObserver(()=>drawMatrix()).observe(document.getElementById('canvasWrap'));
+    buildShapePicker();
+    drawMatrix();
+    renderLegend();
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',drawMatrix);
+  </script>
 </body>
 </html>
